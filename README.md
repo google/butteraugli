@@ -40,6 +40,6 @@ experience classes: 'great', 'acceptable' and 'not acceptable'.
 ## Building the CLI
 This will generate a binary executable named `compare_pngs`
 
-_unix based oparting systems_
+_unix based operating systems_
 - Install [libpng](http://www.libpng.org/)
 - Run the `make` command inside of the `src` directory

@@ -18,7 +18,7 @@ space inhibition.
 Butteraugli can work as a quality metric for lossy image and
 video compression. On our small test corpus butteraugli performs
 better than our implementations of the reference methods, psnrhsv-m,
-ssim, and our yuv-color-space variant of ssim. One possible use is to
+ssim, and our yuv-color-space variant of ssim [1]. One possible use is to
 define the quality level setting used in a jpeg compression, or to
 compare two or more compression methods at the same level of psychovisual
 differences.
@@ -34,3 +34,6 @@ Only a C++ interface is provided. The interface takes two images, gives out a
 map and a scalar value defining the difference. The scalar value can be
 compared to two reference values that divide the value space into three
 experience classes: 'great', 'acceptable' and 'not acceptable'. 
+
+## References
+[1] Please cite the paper where you show the differences.

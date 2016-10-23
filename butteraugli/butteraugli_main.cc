@@ -276,7 +276,7 @@ void FromSrgbToLinear(const std::vector<Image8>& rgb,
 
 std::vector<Image8> ReadImageOrDie(const char* filename) {
   std::vector<Image8> rgb;
-  FILE* f = fopen(filename, "r");
+  FILE* f = fopen(filename, "rb");
   if (!f) {
     fprintf(stderr, "Cannot open %s\n", filename);
     exit(1);

@@ -2,9 +2,9 @@ workspace(name = "butteraugli")
 
 new_http_archive(
   name = "png_archive",
-  url = "http://github.com/glennrp/libpng/archive/v1.2.53.zip",
-  sha256 = "c35bcc6387495ee6e757507a68ba036d38ad05b415c2553b3debe2a57647a692",
-  strip_prefix = "libpng-1.2.53",
+  url = "http://github.com/glennrp/libpng/archive/v1.2.57.zip",
+  sha256 = "a941dc09ca00148fe7aaf4ecdd6a67579c293678ed1e1cf633b5ffc02f4f8cf7",
+  strip_prefix = "libpng-1.2.57",
   build_file = "png.BUILD",
 )
 

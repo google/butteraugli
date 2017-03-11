@@ -123,10 +123,11 @@ bool ButteraugliAdaptiveQuantization(size_t xsize, size_t ysize,
 #define BUTTERAUGLI_RESTRICT __restrict__
 #endif
 
-#ifdef _MSC_VER
-#define BUTTERAUGLI_CACHE_ALIGNED_RETURN /* not supported */
-#else
+
+#ifdef HAS_ASSUME_ALIGNED
 #define BUTTERAUGLI_CACHE_ALIGNED_RETURN __attribute__((assume_aligned(64)))
+#else
+#define BUTTERAUGLI_CACHE_ALIGNED_RETURN /* not supported */
 #endif
 
 // Alias for unchangeable, non-aliased pointers. T is a pointer type,

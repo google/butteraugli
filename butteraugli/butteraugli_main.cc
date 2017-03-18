@@ -58,10 +58,10 @@ bool ReadPNG(FILE* f, std::vector<Image8>* rgb) {
     case 1: {
       // GRAYSCALE
       for (int y = 0; y < ysize; ++y) {
-        ConstRestrict<const uint8_t*> row = row_pointers[y];
-        ConstRestrict<uint8_t*> row0 = (*rgb)[0].Row(y);
-        ConstRestrict<uint8_t*> row1 = (*rgb)[1].Row(y);
-        ConstRestrict<uint8_t*> row2 = (*rgb)[2].Row(y);
+        ConstRestrict<const uint8_t> row = row_pointers[y];
+        ConstRestrict<uint8_t> row0 = (*rgb)[0].Row(y);
+        ConstRestrict<uint8_t> row1 = (*rgb)[1].Row(y);
+        ConstRestrict<uint8_t> row2 = (*rgb)[2].Row(y);
 
         for (int x = 0; x < xsize; ++x) {
           const uint8_t gray = row[x];
@@ -74,11 +74,11 @@ bool ReadPNG(FILE* f, std::vector<Image8>* rgb) {
       // GRAYSCALE_ALPHA
       rgb->push_back(Image8(xsize, ysize));
       for (int y = 0; y < ysize; ++y) {
-        ConstRestrict<const uint8_t*> row = row_pointers[y];
-        ConstRestrict<uint8_t*> row0 = (*rgb)[0].Row(y);
-        ConstRestrict<uint8_t*> row1 = (*rgb)[1].Row(y);
-        ConstRestrict<uint8_t*> row2 = (*rgb)[2].Row(y);
-        ConstRestrict<uint8_t*> row3 = (*rgb)[3].Row(y);
+        ConstRestrict<const uint8_t> row = row_pointers[y];
+        ConstRestrict<uint8_t> row0 = (*rgb)[0].Row(y);
+        ConstRestrict<uint8_t> row1 = (*rgb)[1].Row(y);
+        ConstRestrict<uint8_t> row2 = (*rgb)[2].Row(y);
+        ConstRestrict<uint8_t> row3 = (*rgb)[3].Row(y);
 
         for (int x = 0; x < xsize; ++x) {
           const uint8_t gray = row[2 * x + 0];
@@ -94,10 +94,10 @@ bool ReadPNG(FILE* f, std::vector<Image8>* rgb) {
     case 3: {
       // RGB
       for (int y = 0; y < ysize; ++y) {
-        ConstRestrict<const uint8_t*> row = row_pointers[y];
-        ConstRestrict<uint8_t*> row0 = (*rgb)[0].Row(y);
-        ConstRestrict<uint8_t*> row1 = (*rgb)[1].Row(y);
-        ConstRestrict<uint8_t*> row2 = (*rgb)[2].Row(y);
+        ConstRestrict<const uint8_t> row = row_pointers[y];
+        ConstRestrict<uint8_t> row0 = (*rgb)[0].Row(y);
+        ConstRestrict<uint8_t> row1 = (*rgb)[1].Row(y);
+        ConstRestrict<uint8_t> row2 = (*rgb)[2].Row(y);
 
         for (int x = 0; x < xsize; ++x) {
           row0[x] = row[3 * x + 0];
@@ -111,11 +111,11 @@ bool ReadPNG(FILE* f, std::vector<Image8>* rgb) {
       // RGBA
       rgb->push_back(Image8(xsize, ysize));
       for (int y = 0; y < ysize; ++y) {
-        ConstRestrict<const uint8_t*> row = row_pointers[y];
-        ConstRestrict<uint8_t*> row0 = (*rgb)[0].Row(y);
-        ConstRestrict<uint8_t*> row1 = (*rgb)[1].Row(y);
-        ConstRestrict<uint8_t*> row2 = (*rgb)[2].Row(y);
-        ConstRestrict<uint8_t*> row3 = (*rgb)[3].Row(y);
+        ConstRestrict<const uint8_t> row = row_pointers[y];
+        ConstRestrict<uint8_t> row0 = (*rgb)[0].Row(y);
+        ConstRestrict<uint8_t> row1 = (*rgb)[1].Row(y);
+        ConstRestrict<uint8_t> row2 = (*rgb)[2].Row(y);
+        ConstRestrict<uint8_t> row3 = (*rgb)[3].Row(y);
 
         for (int x = 0; x < xsize; ++x) {
           row0[x] = row[4 * x + 0];
@@ -187,10 +187,10 @@ bool ReadJPEG(FILE* f, std::vector<Image8>* rgb) {
       while (cinfo.output_scanline < cinfo.output_height) {
         jpeg_read_scanlines(&cinfo, buffer, 1);
 
-        ConstRestrict<const uint8_t*> row = buffer[0];
-        ConstRestrict<uint8_t*> row0 = (*rgb)[0].Row(cinfo.output_scanline - 1);
-        ConstRestrict<uint8_t*> row1 = (*rgb)[1].Row(cinfo.output_scanline - 1);
-        ConstRestrict<uint8_t*> row2 = (*rgb)[2].Row(cinfo.output_scanline - 1);
+        ConstRestrict<const uint8_t> row = buffer[0];
+        ConstRestrict<uint8_t> row0 = (*rgb)[0].Row(cinfo.output_scanline - 1);
+        ConstRestrict<uint8_t> row1 = (*rgb)[1].Row(cinfo.output_scanline - 1);
+        ConstRestrict<uint8_t> row2 = (*rgb)[2].Row(cinfo.output_scanline - 1);
 
         for (int x = 0; x < xsize; x++) {
           const uint8_t gray = row[x];
@@ -203,10 +203,10 @@ bool ReadJPEG(FILE* f, std::vector<Image8>* rgb) {
       while (cinfo.output_scanline < cinfo.output_height) {
         jpeg_read_scanlines(&cinfo, buffer, 1);
 
-        ConstRestrict<const uint8_t*> row = buffer[0];
-        ConstRestrict<uint8_t*> row0 = (*rgb)[0].Row(cinfo.output_scanline - 1);
-        ConstRestrict<uint8_t*> row1 = (*rgb)[1].Row(cinfo.output_scanline - 1);
-        ConstRestrict<uint8_t*> row2 = (*rgb)[2].Row(cinfo.output_scanline - 1);
+        ConstRestrict<const uint8_t> row = buffer[0];
+        ConstRestrict<uint8_t> row0 = (*rgb)[0].Row(cinfo.output_scanline - 1);
+        ConstRestrict<uint8_t> row1 = (*rgb)[1].Row(cinfo.output_scanline - 1);
+        ConstRestrict<uint8_t> row2 = (*rgb)[2].Row(cinfo.output_scanline - 1);
 
         for (int x = 0; x < xsize; x++) {
           row0[x] = row[3 * x + 0];
@@ -240,8 +240,8 @@ void FromSrgbToLinear(const std::vector<Image8>& rgb,
     for (int c = 0; c < 3; c++) {
       linear.push_back(ImageF(xsize, ysize));
       for (int y = 0; y < ysize; ++y) {
-        ConstRestrict<const uint8_t*> row_rgb = rgb[c].Row(y);
-        ConstRestrict<float*> row_linear = linear[c].Row(y);
+        ConstRestrict<const uint8_t> row_rgb = rgb[c].Row(y);
+        ConstRestrict<float> row_linear = linear[c].Row(y);
         for (size_t x = 0; x < xsize; x++) {
           const int value = row_rgb[x];
           row_linear[x] = kSrgbToLinearTable[value];
@@ -252,9 +252,9 @@ void FromSrgbToLinear(const std::vector<Image8>& rgb,
     for (int c = 0; c < 3; c++) {
       linear.push_back(ImageF(xsize, ysize));
       for (int y = 0; y < ysize; ++y) {
-        ConstRestrict<const uint8_t*> row_rgb = rgb[c].Row(y);
-        ConstRestrict<float*> row_linear = linear[c].Row(y);
-        ConstRestrict<const uint8_t*> row_alpha = rgb[3].Row(y);
+        ConstRestrict<const uint8_t> row_rgb = rgb[c].Row(y);
+        ConstRestrict<float> row_linear = linear[c].Row(y);
+        ConstRestrict<const uint8_t> row_alpha = rgb[3].Row(y);
         for (size_t x = 0; x < xsize; x++) {
           int value;
           if (row_alpha[x] == 255) {

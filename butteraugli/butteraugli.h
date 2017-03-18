@@ -134,7 +134,7 @@ bool ButteraugliAdaptiveQuantization(size_t xsize, size_t ysize,
 // The conventional syntax uint8_t* const RESTRICT is more confusing - it is
 // not immediately obvious that the pointee is non-const.
 template <typename T>
-using ConstRestrict = T const BUTTERAUGLI_RESTRICT;
+using ConstRestrict = T* const BUTTERAUGLI_RESTRICT;
 
 // Functions that depend on the cache line size.
 class CacheAligned {
@@ -155,7 +155,7 @@ using CacheAlignedUniquePtr = CacheAlignedUniquePtrT<uint8_t>;
 template <typename T = uint8_t>
 static inline CacheAlignedUniquePtrT<T> Allocate(const size_t entries) {
   return CacheAlignedUniquePtrT<T>(
-      static_cast<ConstRestrict<T *>>(
+      static_cast<ConstRestrict<T>>(
           CacheAligned::Allocate(entries * sizeof(T))),
       CacheAligned::Free);
 }
@@ -220,7 +220,7 @@ class Image {
         bytes_per_row_(BytesPerRow(xsize)),
         bytes_(Allocate(bytes_per_row_ * ysize)) {}
 
-  Image(const size_t xsize, const size_t ysize, ConstRestrict<uint8_t *> bytes,
+  Image(const size_t xsize, const size_t ysize, ConstRestrict<uint8_t> bytes,
         const size_t bytes_per_row)
       : xsize_(xsize),
         ysize_(ysize),
@@ -254,7 +254,7 @@ class Image {
   size_t xsize() const { return xsize_; }
   size_t ysize() const { return ysize_; }
 
-  ConstRestrict<T *> Row(const size_t y) BUTTERAUGLI_CACHE_ALIGNED_RETURN {
+  ConstRestrict<T> Row(const size_t y) BUTTERAUGLI_CACHE_ALIGNED_RETURN {
 #ifdef BUTTERAUGLI_ENABLE_CHECKS
     if (y >= ysize_) {
       printf("Row %zu out of bounds (ysize=%zu)\n", y, ysize_);
@@ -264,7 +264,7 @@ class Image {
     return reinterpret_cast<T *>(bytes_.get() + y * bytes_per_row_);
   }
 
-  ConstRestrict<const T *> Row(const size_t y) const
+  ConstRestrict<const T> Row(const size_t y) const
       BUTTERAUGLI_CACHE_ALIGNED_RETURN {
 #ifdef BUTTERAUGLI_ENABLE_CHECKS
     if (y >= ysize_) {
@@ -277,8 +277,8 @@ class Image {
 
   // Raw access to byte contents, for interfacing with other libraries.
   // Unsigned char instead of char to avoid surprises (sign extension).
-  ConstRestrict<uint8_t *> bytes() { return bytes_.get(); }
-  ConstRestrict<const uint8_t *> bytes() const { return bytes_.get(); }
+  ConstRestrict<uint8_t> bytes() { return bytes_.get(); }
+  ConstRestrict<const uint8_t> bytes() const { return bytes_.get(); }
   size_t bytes_per_row() const { return bytes_per_row_; }
 
   // Returns number of pixels (some of which are padding) per row. Useful for
@@ -347,8 +347,8 @@ static inline void CopyToPacked(const Image<T> &from, std::vector<T> *to) {
   }
 #endif
   for (size_t y = 0; y < ysize; ++y) {
-    ConstRestrict<const float*> row_from = from.Row(y);
-    ConstRestrict<float*> row_to = to->data() + y * xsize;
+    ConstRestrict<const float> row_from = from.Row(y);
+    ConstRestrict<float> row_to = to->data() + y * xsize;
     memcpy(row_to, row_from, xsize * sizeof(T));
   }
 }
@@ -360,8 +360,8 @@ static inline void CopyFromPacked(const std::vector<T> &from, Image<T> *to) {
   const size_t ysize = to->ysize();
   assert(from.size() == xsize * ysize);
   for (size_t y = 0; y < ysize; ++y) {
-    ConstRestrict<const float*> row_from = from.data() + y * xsize;
-    ConstRestrict<float*> row_to = to->Row(y);
+    ConstRestrict<const float> row_from = from.data() + y * xsize;
+    ConstRestrict<float> row_to = to->Row(y);
     memcpy(row_to, row_from, xsize * sizeof(T));
   }
 }

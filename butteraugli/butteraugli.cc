@@ -91,7 +91,7 @@ static inline bool IsNan(const double x) {
 
 static inline void CheckImage(const ImageF &image, const char *name) {
   for (size_t y = 0; y < image.ysize(); ++y) {
-    ConstRestrict<const float *> row = image.Row(y);
+    ConstRestrict<const float> row = image.Row(y);
     for (size_t x = 0; x < image.xsize(); ++x) {
       if (IsNan(row[x])) {
         printf("Image %s @ %lu,%lu (of %lu,%lu)\n", name, x, y, image.xsize(),
@@ -1214,7 +1214,7 @@ double ButteraugliScoreFromDiffmap(const ImageF& diffmap) {
   PROFILER_FUNC;
   float retval = 0.0f;
   for (size_t y = 0; y < diffmap.ysize(); ++y) {
-    ConstRestrict<const float *> row = diffmap.Row(y);
+    ConstRestrict<const float> row = diffmap.Row(y);
     for (size_t x = 0; x < diffmap.xsize(); ++x) {
       retval = std::max(retval, row[x]);
     }

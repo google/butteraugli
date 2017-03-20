@@ -786,7 +786,7 @@ void Butteraugli8x8CornerEdgeDetectorDiff(
   }
 }
 
-// https://en.wikipedia.org/wiki/Photopsin absordance modeling.
+// https://en.wikipedia.org/wiki/Photopsin absorbance modeling.
 const double *GetOpsinAbsorbance() {
   static const double kMix[12] = {
     0.348036746003,

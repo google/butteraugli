@@ -28,15 +28,6 @@
 #include <memory>
 #include <vector>
 
-#ifndef PROFILER_ENABLED
-#define PROFILER_ENABLED 0
-#endif
-#if PROFILER_ENABLED
-#else
-#define PROFILER_FUNC
-#define PROFILER_ZONE(name)
-#endif
-
 #define BUTTERAUGLI_ENABLE_CHECKS 0
 
 // This is the main interface to butteraugli image similarity
@@ -49,7 +40,6 @@ class Image;
 
 using Image8 = Image<uint8_t>;
 using ImageF = Image<float>;
-using ImageD = Image<double>;
 
 // ButteraugliInterface defines the public interface for butteraugli.
 //
@@ -124,17 +114,22 @@ bool ButteraugliAdaptiveQuantization(size_t xsize, size_t ysize,
 #endif
 
 #ifdef _MSC_VER
-#define BUTTERAUGLI_CACHE_ALIGNED_RETURN /* not supported */
+#define BUTTERAUGLI_INLINE __forceinline
 #else
-#define BUTTERAUGLI_CACHE_ALIGNED_RETURN __attribute__((assume_aligned(64)))
+#define BUTTERAUGLI_INLINE inline
 #endif
 
-// Alias for unchangeable, non-aliased pointers. T is a pointer type,
-// possibly to a const type. Example: ConstRestrict<uint8_t*> ptr = nullptr.
-// The conventional syntax uint8_t* const RESTRICT is more confusing - it is
-// not immediately obvious that the pointee is non-const.
-template <typename T>
-using ConstRestrict = T const BUTTERAUGLI_RESTRICT;
+// Returns a void* pointer which the compiler then assumes is N-byte aligned.
+// Example: float* PIK_RESTRICT aligned = (float*)PIK_ASSUME_ALIGNED(in, 32);
+//
+// The assignment semantics are required by GCC/Clang. ICC provides an in-place
+// __assume_aligned, whereas MSVC's __assume appears unsuitable.
+#if PIK_COMPILER_GCC || PIK_COMPILER_CLANG
+#define BUTTERAUGLI_ASSUME_ALIGNED(ptr, align) \
+  __builtin_assume_aligned((ptr), (align))
+#else
+#define BUTTERAUGLI_ASSUME_ALIGNED(ptr, align) ptr /* not supported */
+#endif
 
 // Functions that depend on the cache line size.
 class CacheAligned {
@@ -143,7 +138,7 @@ class CacheAligned {
   static constexpr size_t kCacheLineSize = 64;
 
   // The aligned-return annotation is only allowed on function declarations.
-  static void *Allocate(const size_t bytes) BUTTERAUGLI_CACHE_ALIGNED_RETURN;
+  static void *Allocate(const size_t bytes);
   static void Free(void *aligned_pointer);
 };
 
@@ -155,7 +150,7 @@ using CacheAlignedUniquePtr = CacheAlignedUniquePtrT<uint8_t>;
 template <typename T = uint8_t>
 static inline CacheAlignedUniquePtrT<T> Allocate(const size_t entries) {
   return CacheAlignedUniquePtrT<T>(
-      static_cast<ConstRestrict<T *>>(
+      static_cast<T * const BUTTERAUGLI_RESTRICT>(
           CacheAligned::Allocate(entries * sizeof(T))),
       CacheAligned::Free);
 }
@@ -220,7 +215,21 @@ class Image {
         bytes_per_row_(BytesPerRow(xsize)),
         bytes_(Allocate(bytes_per_row_ * ysize)) {}
 
-  Image(const size_t xsize, const size_t ysize, ConstRestrict<uint8_t *> bytes,
+  Image(const size_t xsize, const size_t ysize, T val)
+      : xsize_(xsize),
+        ysize_(ysize),
+        bytes_per_row_(BytesPerRow(xsize)),
+        bytes_(Allocate(bytes_per_row_ * ysize)) {
+    for (size_t y = 0; y < ysize_; ++y) {
+      T* const BUTTERAUGLI_RESTRICT row = Row(y);
+      for (int x = 0; x < xsize_; ++x) {
+        row[x] = val;
+      }
+    }
+  }
+
+  Image(const size_t xsize, const size_t ysize,
+        uint8_t * const BUTTERAUGLI_RESTRICT bytes,
         const size_t bytes_per_row)
       : xsize_(xsize),
         ysize_(ysize),
@@ -254,31 +263,34 @@ class Image {
   size_t xsize() const { return xsize_; }
   size_t ysize() const { return ysize_; }
 
-  ConstRestrict<T *> Row(const size_t y) BUTTERAUGLI_CACHE_ALIGNED_RETURN {
+  T *const BUTTERAUGLI_RESTRICT Row(const size_t y) {
 #ifdef BUTTERAUGLI_ENABLE_CHECKS
     if (y >= ysize_) {
       printf("Row %zu out of bounds (ysize=%zu)\n", y, ysize_);
       abort();
     }
 #endif
-    return reinterpret_cast<T *>(bytes_.get() + y * bytes_per_row_);
+    void *row = bytes_.get() + y * bytes_per_row_;
+    return reinterpret_cast<T *>(BUTTERAUGLI_ASSUME_ALIGNED(row, 64));
   }
 
-  ConstRestrict<const T *> Row(const size_t y) const
-      BUTTERAUGLI_CACHE_ALIGNED_RETURN {
+  const T *const BUTTERAUGLI_RESTRICT Row(const size_t y) const {
 #ifdef BUTTERAUGLI_ENABLE_CHECKS
     if (y >= ysize_) {
       printf("Const row %zu out of bounds (ysize=%zu)\n", y, ysize_);
       abort();
     }
 #endif
-    return reinterpret_cast<const T *>(bytes_.get() + y * bytes_per_row_);
+    void *row = bytes_.get() + y * bytes_per_row_;
+    return reinterpret_cast<const T *>(BUTTERAUGLI_ASSUME_ALIGNED(row, 64));
   }
 
   // Raw access to byte contents, for interfacing with other libraries.
   // Unsigned char instead of char to avoid surprises (sign extension).
-  ConstRestrict<uint8_t *> bytes() { return bytes_.get(); }
-  ConstRestrict<const uint8_t *> bytes() const { return bytes_.get(); }
+  uint8_t * const BUTTERAUGLI_RESTRICT bytes() { return bytes_.get(); }
+  const uint8_t * const BUTTERAUGLI_RESTRICT bytes() const {
+      return bytes_.get();
+  }
   size_t bytes_per_row() const { return bytes_per_row_; }
 
   // Returns number of pixels (some of which are padding) per row. Useful for
@@ -347,8 +359,8 @@ static inline void CopyToPacked(const Image<T> &from, std::vector<T> *to) {
   }
 #endif
   for (size_t y = 0; y < ysize; ++y) {
-    ConstRestrict<const float*> row_from = from.Row(y);
-    ConstRestrict<float*> row_to = to->data() + y * xsize;
+    const float* const BUTTERAUGLI_RESTRICT row_from = from.Row(y);
+    float* const BUTTERAUGLI_RESTRICT row_to = to->data() + y * xsize;
     memcpy(row_to, row_from, xsize * sizeof(T));
   }
 }
@@ -360,8 +372,9 @@ static inline void CopyFromPacked(const std::vector<T> &from, Image<T> *to) {
   const size_t ysize = to->ysize();
   assert(from.size() == xsize * ysize);
   for (size_t y = 0; y < ysize; ++y) {
-    ConstRestrict<const float*> row_from = from.data() + y * xsize;
-    ConstRestrict<float*> row_to = to->Row(y);
+    const float* const BUTTERAUGLI_RESTRICT row_from =
+        from.data() + y * xsize;
+    float* const BUTTERAUGLI_RESTRICT row_to = to->Row(y);
     memcpy(row_to, row_from, xsize * sizeof(T));
   }
 }
@@ -393,49 +406,47 @@ static inline std::vector<std::vector<T>> PackedFromPlanes(
   return packed;
 }
 
+struct PsychoImage {
+  std::vector<ImageF> uhf;
+  std::vector<ImageF> hf;
+  std::vector<ImageF> mf;
+  std::vector<ImageF> lf;
+};
+
 class ButteraugliComparator {
  public:
-  ButteraugliComparator(size_t xsize, size_t ysize, int step);
+  ButteraugliComparator(const std::vector<ImageF>& rgb0);
 
-  // Computes the butteraugli map between rgb0 and rgb1 and updates result.
-  void Diffmap(const std::vector<ImageF> &rgb0,
-               const std::vector<ImageF> &rgb1,
-               ImageF &result);
+  // Computes the butteraugli map between the original image given in the
+  // constructor and the distorted image give here.
+  void Diffmap(const std::vector<ImageF>& rgb1, ImageF& result) const;
 
-  // Same as above, but OpsinDynamicsImage() was already applied to
-  // rgb0 and rgb1.
-  void DiffmapOpsinDynamicsImage(const std::vector<ImageF> &rgb0,
-                                 const std::vector<ImageF> &rgb1,
-                                 ImageF &result);
+  // Same as above, but OpsinDynamicsImage() was already applied.
+  void DiffmapOpsinDynamicsImage(const std::vector<ImageF>& xyb1,
+                                 ImageF& result) const;
+
+  // Same as above, but the frequency decomposition was already applied.
+  void DiffmapPsychoImage(const PsychoImage& ps1, ImageF &result) const;
+
+  void Mask(std::vector<ImageF>* BUTTERAUGLI_RESTRICT mask,
+            std::vector<ImageF>* BUTTERAUGLI_RESTRICT mask_dc) const;
 
  private:
-  void BlockDiffMap(const std::vector<std::vector<float> > &rgb0,
-                    const std::vector<std::vector<float> > &rgb1,
-                    std::vector<float>* block_diff_dc,
-                    std::vector<float>* block_diff_ac);
+  void MaltaDiffMap(const ImageF& y0,
+                    const ImageF& y1,
+                    double w,
+                    double normalization,
+                    ImageF* BUTTERAUGLI_RESTRICT block_diff_ac) const;
 
-
-  void EdgeDetectorMap(const std::vector<std::vector<float> > &rgb0,
-                       const std::vector<std::vector<float> > &rgb1,
-                       std::vector<float>* edge_detector_map);
-
-  void EdgeDetectorLowFreq(const std::vector<std::vector<float> > &rgb0,
-                           const std::vector<std::vector<float> > &rgb1,
-                           std::vector<float>* block_diff_ac);
-
-  void CombineChannels(const std::vector<std::vector<float> >& scale_xyb,
-                       const std::vector<std::vector<float> >& scale_xyb_dc,
-                       const std::vector<float>& block_diff_dc,
-                       const std::vector<float>& block_diff_ac,
-                       const std::vector<float>& edge_detector_map,
-                       std::vector<float>* result);
+  ImageF CombineChannels(const std::vector<ImageF>& scale_xyb,
+                         const std::vector<ImageF>& scale_xyb_dc,
+                         const std::vector<ImageF>& block_diff_dc,
+                         const std::vector<ImageF>& block_diff_ac) const;
 
   const size_t xsize_;
   const size_t ysize_;
   const size_t num_pixels_;
-  const int step_;
-  const size_t res_xsize_;
-  const size_t res_ysize_;
+  PsychoImage pi0_;
 };
 
 void ButteraugliDiffmap(const std::vector<ImageF> &rgb0,
@@ -444,38 +455,70 @@ void ButteraugliDiffmap(const std::vector<ImageF> &rgb0,
 
 double ButteraugliScoreFromDiffmap(const ImageF& distmap);
 
+// Generate rgb-representation of the distance between two images.
+void CreateHeatMapImage(const std::vector<float> &distmap,
+                        double good_threshold, double bad_threshold,
+                        size_t xsize, size_t ysize,
+                        std::vector<uint8_t> *heatmap);
+
 // Compute values of local frequency and dc masking based on the activity
 // in the two images.
-void Mask(const std::vector<std::vector<float> > &rgb0,
-          const std::vector<std::vector<float> > &rgb1,
-          size_t xsize, size_t ysize,
-          std::vector<std::vector<float> > *mask,
-          std::vector<std::vector<float> > *mask_dc);
+void Mask(const std::vector<ImageF>& xyb0,
+          const std::vector<ImageF>& xyb1,
+          std::vector<ImageF>* BUTTERAUGLI_RESTRICT mask,
+          std::vector<ImageF>* BUTTERAUGLI_RESTRICT mask_dc);
 
-// Computes difference metrics for one 8x8 block.
-void ButteraugliBlockDiff(double rgb0[192],
-                          double rgb1[192],
-                          double diff_xyb_dc[3],
-                          double diff_xyb_ac[3],
-                          double diff_xyb_edge_dc[3]);
+template <class V>
+BUTTERAUGLI_INLINE void RgbToXyb(const V &r, const V &g, const V &b,
+                                 V *BUTTERAUGLI_RESTRICT valx,
+                                 V *BUTTERAUGLI_RESTRICT valy,
+                                 V *BUTTERAUGLI_RESTRICT valb) {
+  *valx = r - g;
+  *valy = r + g;
+  *valb = b;
+}
 
-void OpsinAbsorbance(const double in[3], double out[3]);
+template <class V>
+BUTTERAUGLI_INLINE void OpsinAbsorbance(const V &in0, const V &in1,
+                                        const V &in2,
+                                        V *BUTTERAUGLI_RESTRICT out0,
+                                        V *BUTTERAUGLI_RESTRICT out1,
+                                        V *BUTTERAUGLI_RESTRICT out2) {
+  // https://en.wikipedia.org/wiki/Photopsin absorbance modeling.
+  static const double mixi0 = 0.262805861774;
+  static const double mixi1 = 0.447726163795;
+  static const double mixi2 = 0.0669350599301;
+  static const double mixi3 = 0.70582780208;
+  static const double mixi4 = 0.242970172936;
+  static const double mixi5 = 0.557086443066;
+  static const double mixi6 = mixi2;
+  static const double mixi7 = mixi3;
+  static const double mixi8 = 0.443262270088;
+  static const double mixi9 = 1.22484933589;
+  static const double mixi10 = 0.610100334382;
+  static const double mixi11 = 5.95035078154;
 
-void OpsinDynamicsImage(size_t xsize, size_t ysize,
-                        std::vector<std::vector<float> > &rgb);
+  const V mix0(mixi0);
+  const V mix1(mixi1);
+  const V mix2(mixi2);
+  const V mix3(mixi3);
+  const V mix4(mixi4);
+  const V mix5(mixi5);
+  const V mix6(mixi6);
+  const V mix7(mixi7);
+  const V mix8(mixi8);
+  const V mix9(mixi9);
+  const V mix10(mixi10);
+  const V mix11(mixi11);
 
-void MaskHighIntensityChange(
-    size_t xsize, size_t ysize,
-    const std::vector<std::vector<float> > &c0,
-    const std::vector<std::vector<float> > &c1,
-    std::vector<std::vector<float> > &rgb0,
-    std::vector<std::vector<float> > &rgb1);
+  *out0 = mix0 * in0 + mix1 * in1 + mix2 * in2 + mix3;
+  *out1 = mix4 * in0 + mix5 * in1 + mix6 * in2 + mix7;
+  *out2 = mix8 * in0 + mix9 * in1 + mix10 * in2 + mix11;
+}
 
-void Blur(size_t xsize, size_t ysize, float* channel, double sigma,
-          double border_ratio = 0.0);
+std::vector<ImageF> OpsinDynamicsImage(const std::vector<ImageF>& rgb);
 
-void RgbToXyb(double r, double g, double b,
-              double *valx, double *valy, double *valz);
+ImageF Blur(const ImageF& in, float sigma, float border_ratio);
 
 double SimpleGamma(double v);
 
@@ -518,7 +561,7 @@ struct RationalPolynomial {
   }
 
   // Evaluates the polynomial at x (in [min_value, max_value]).
-  inline double operator()(const float x) const {
+  inline double operator()(const double x) const {
     // First normalize to [0, 1].
     const double x01 = (x - min_value) / (max_value - min_value);
     // And then to [-1, 1] domain of Chebyshev polynomials.
@@ -540,18 +583,17 @@ struct RationalPolynomial {
   double q[5 + 1];
 };
 
-static inline float GammaPolynomial(float value) {
-  // Generated by gamma_polynomial.m from equispaced x/gamma(x) samples.
+static inline double GammaPolynomial(double value) {
   static const RationalPolynomial r = {
-  0.770000000000000, 274.579999999999984,
-  {
-    881.979476556478289, 1496.058452015812463, 908.662212739659481,
-    373.566100223287378, 85.840860336314364, 6.683258861509244,
-  },
-  {
-    12.262350348616792, 20.557285797683576, 12.161463238367844,
-    4.711532733641639, 0.899112889751053, 0.035662329617191,
-  }};
+    0.408723, 938.679805,
+    {
+      105.140350121709, 174.559976200322, 98.4148768758428,
+      35.8241560745099, 7.49107397809489, 0.662141060076337
+    },
+    {
+      1, 1.63871903559554, 0.885120110684469,
+      0.29527196193155, 0.0518807910954246, 0.0030064776933143
+    }};
   return r(value);
 }
 

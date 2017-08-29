@@ -135,7 +135,7 @@ static inline void CheckImage(const ImageF &image, const char *name) {
 // Purpose of kInternalGoodQualityThreshold:
 // Normalize 'ok' image degradation to 1.0 across different versions of
 // butteraugli.
-static const double kInternalGoodQualityThreshold = 12.199904665592934;
+static const double kInternalGoodQualityThreshold = 11.698467292807441;
 static const double kGlobalScale = 1.0 / kInternalGoodQualityThreshold;
 
 inline float DotProduct(const float u[3], const float v[3]) {

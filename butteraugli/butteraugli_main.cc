@@ -371,20 +371,12 @@ int Run(int argc, char* argv[]) {
   std::vector<Image8> rgb1 = ReadImageOrDie(argv[1]);
   std::vector<Image8> rgb2 = ReadImageOrDie(argv[2]);
 
-  if (rgb1.size() != rgb2.size()) {
-    fprintf(stderr, "Different number of channels: %lu vs %lu\n", rgb1.size(),
-            rgb2.size());
-    exit(1);
-  }
-
-  for (size_t c = 0; c < rgb1.size(); ++c) {
-    if (rgb1[c].xsize() != rgb2[c].xsize() ||
-        rgb1[c].ysize() != rgb2[c].ysize()) {
-      fprintf(
-          stderr, "The images are not equal in size: (%lu,%lu) vs (%lu,%lu)\n",
-          rgb1[c].xsize(), rgb2[c].xsize(), rgb1[c].ysize(), rgb2[c].ysize());
-      return 1;
-    }
+  if (rgb1[0].xsize() != rgb2[0].xsize() ||
+      rgb1[0].ysize() != rgb2[0].ysize()) {
+    fprintf(
+        stderr, "The images are not equal in size: (%lu,%lu) vs (%lu,%lu)\n",
+        rgb1[0].xsize(), rgb2[0].xsize(), rgb1[0].ysize(), rgb2[0].ysize());
+    return 1;
   }
 
   // TODO: Figure out if it is a good idea to fetch the gamma from the image

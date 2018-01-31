@@ -1,3 +1,18 @@
+filegroup(
+    name = "git_files",
+    srcs = glob([".git/**"]),
+)
+
+genrule(
+    name = "gen_version",
+    srcs = [
+        ":git_files",
+        "version.sh"
+    ],
+    outs = ["version.txt"],
+    cmd = "./version.sh $@",
+)
+
 cc_library(
     name = "butteraugli_lib",
     srcs = [
@@ -21,4 +36,5 @@ cc_binary(
         "@jpeg_archive//:jpeg",
         "@png_archive//:png",
     ],
+    data = [":gen_version"],
 )

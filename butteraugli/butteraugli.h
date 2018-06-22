@@ -75,6 +75,7 @@ using ImageF = Image<float>;
 
 bool ButteraugliInterface(const std::vector<ImageF> &rgb0,
                           const std::vector<ImageF> &rgb1,
+                          float hf_asymmetry,
                           ImageF &diffmap,
                           double &diffvalue);
 
@@ -423,7 +424,7 @@ struct PsychoImage {
 
 class ButteraugliComparator {
  public:
-  ButteraugliComparator(const std::vector<ImageF>& rgb0);
+  ButteraugliComparator(const std::vector<ImageF>& rgb0, double hf_asymmetry);
 
   // Computes the butteraugli map between the original image given in the
   // constructor and the distorted image give here.
@@ -440,9 +441,17 @@ class ButteraugliComparator {
             std::vector<ImageF>* BUTTERAUGLI_RESTRICT mask_dc) const;
 
  private:
+  void MaltaDiffMapLF(const ImageF& y0,
+                      const ImageF& y1,
+                      double w_0gt1,
+                      double w_0lt1,
+                      double normalization,
+                      ImageF* BUTTERAUGLI_RESTRICT block_diff_ac) const;
+
   void MaltaDiffMap(const ImageF& y0,
                     const ImageF& y1,
-                    double w,
+                    double w_0gt1,
+                    double w_0lt1,
                     double normalization,
                     ImageF* BUTTERAUGLI_RESTRICT block_diff_ac) const;
 
@@ -454,11 +463,13 @@ class ButteraugliComparator {
   const size_t xsize_;
   const size_t ysize_;
   const size_t num_pixels_;
+  float hf_asymmetry_;
   PsychoImage pi0_;
 };
 
 void ButteraugliDiffmap(const std::vector<ImageF> &rgb0,
                         const std::vector<ImageF> &rgb1,
+                        double hf_asymmetry,
                         ImageF &diffmap);
 
 double ButteraugliScoreFromDiffmap(const ImageF& distmap);
@@ -493,18 +504,18 @@ BUTTERAUGLI_INLINE void OpsinAbsorbance(const V &in0, const V &in1,
                                         V *BUTTERAUGLI_RESTRICT out1,
                                         V *BUTTERAUGLI_RESTRICT out2) {
   // https://en.wikipedia.org/wiki/Photopsin absorbance modeling.
-  static const double mixi0 = 0.254034300884;
-  static const double mixi1 = 0.466691456721;
-  static const double mixi2 = 0.0927013001396;
-  static const double mixi3 = 0.971783366726;
-  static const double mixi4 = 0.231306455359;
-  static const double mixi5 = 0.546409605324;
-  static const double mixi6 = mixi2;
-  static const double mixi7 = mixi3;
-  static const double mixi8 = 0.423139962818;
-  static const double mixi9 = 1.24737070912;
-  static const double mixi10 = 0.61402451409;
-  static const double mixi11 = 7.63242153651;
+  static const double mixi0 = 0.254462330846;
+  static const double mixi1 = 0.488238255095;
+  static const double mixi2 = 0.0635278003854;
+  static const double mixi3 = 1.01681026909;
+  static const double mixi4 = 0.195214015766;
+  static const double mixi5 = 0.568019861857;
+  static const double mixi6 = 0.0860755536007;
+  static const double mixi7 = 1.1510118369;
+  static const double mixi8 = 0.07374607900105684;
+  static const double mixi9 = 0.06142425304154509;
+  static const double mixi10 = 0.24416850520714256;
+  static const double mixi11 = 1.20481945273;
 
   const V mix0(mixi0);
   const V mix1(mixi1);

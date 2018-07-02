@@ -107,7 +107,7 @@ static inline void CheckImage(const ImageF &image, const char *name) {
     const float * const BUTTERAUGLI_RESTRICT row = image.Row(y);
     for (size_t x = 0; x < image.xsize(); ++x) {
       if (IsNan(row[x])) {
-        printf("Image %s @ %lu,%lu (of %lu,%lu)\n", name, x, y, image.xsize(),
+        printf("Image %s @ %zu,%zu (of %zu,%zu)\n", name, x, y, image.xsize(),
                image.ysize());
         exit(1);
       }

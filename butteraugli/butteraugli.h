@@ -216,7 +216,7 @@ class Image {
  public:
   using T = ComponentType;
 
-  Image() : xsize_(0), ysize_(0), bytes_per_row_(0), bytes_(nullptr, Ignore) {}
+  Image() : xsize_(0), ysize_(0), bytes_per_row_(0), bytes_(static_cast<uint8_t*>(nullptr), Ignore) {}
 
   Image(const size_t xsize, const size_t ysize)
       : xsize_(xsize),

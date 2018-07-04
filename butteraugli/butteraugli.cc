@@ -190,17 +190,17 @@ ImageF Convolution(const ImageF& in,
   PROFILER_FUNC;
   ImageF out(in.ysize(), in.xsize());
   const int len = kernel.size();
-  const int offset = kernel.size() / 2;
+  const int offset = len / 2;
   float weight_no_border = 0.0f;
   for (int j = 0; j < len; ++j) {
     weight_no_border += kernel[j];
   }
-  float scale_no_border = 1.0f / weight_no_border;
+  const float scale_no_border = 1.0f / weight_no_border;
   const int border1 = in.xsize() <= offset ? in.xsize() : offset;
   const int border2 = in.xsize() - offset;
-  std::vector<float> scaled_kernel = kernel;
-  for (int i = 0; i < scaled_kernel.size(); ++i) {
-    scaled_kernel[i] *= scale_no_border;
+  float* BUTTERAUGLI_RESTRICT scaled_kernel = (float*)malloc((len/2+1)*sizeof(float));
+  for (int i = 0; i <= len/2; ++i) {
+    scaled_kernel[i] = kernel[i] * scale_no_border;
   }
   // left border
   for (int x = 0; x < border1; ++x) {
@@ -208,23 +208,191 @@ ImageF Convolution(const ImageF& in,
                          out.Row(x));
   }
   // middle
-  for (size_t y = 0; y < in.ysize(); ++y) {
-    const float* const BUTTERAUGLI_RESTRICT row_in = in.Row(y);
-    for (int x = border1; x < border2; ++x) {
-      const int d = x - offset;
-      float* const BUTTERAUGLI_RESTRICT row_out = out.Row(x);
-      float sum = 0.0f;
-      for (int j = 0; j < len; ++j) {
-        sum += row_in[d + j] * scaled_kernel[j];
-      }
-      row_out[y] = sum;
-    }
+  switch(len) {
+		#if 1   // speed-optimized version
+		case 5:  {
+		  const float sk0 = scaled_kernel[0];
+		  const float sk1 = scaled_kernel[1];
+		  const float sk2 = scaled_kernel[2];
+		  for (size_t y = 0; y < in.ysize(); ++y) {
+		    const float* BUTTERAUGLI_RESTRICT row_in = in.Row(y) + border1 - offset;
+		    for (int x = border1; x < border2; ++x, ++row_in) {
+		      float sum  = (row_in[ 0] + row_in[ 4]) * sk0;
+		            sum += (row_in[ 1] + row_in[ 3]) * sk1;
+		            sum += (row_in[ 2]             ) * sk2;
+		      float* const BUTTERAUGLI_RESTRICT row_out = out.Row(x);
+		      row_out[y] = sum;
+		    }
+		  }}
+		  break;
+		case 9: {
+		  const float sk0 = scaled_kernel[0];
+		  const float sk1 = scaled_kernel[1];
+		  const float sk2 = scaled_kernel[2];
+		  const float sk3 = scaled_kernel[3];
+		  const float sk4 = scaled_kernel[4];
+		  for (size_t y = 0; y < in.ysize(); ++y) {
+		    const float* BUTTERAUGLI_RESTRICT row_in = in.Row(y) + border1 - offset;
+		    for (int x = border1; x < border2; ++x, ++row_in) {
+		      float sum  = (row_in[ 0] + row_in[ 8]) * sk0;
+		            sum += (row_in[ 1] + row_in[ 7]) * sk1;
+		            sum += (row_in[ 2] + row_in[ 6]) * sk2;
+		            sum += (row_in[ 3] + row_in[ 5]) * sk3;
+		            sum += (row_in[ 4]             ) * sk4;
+		      float* const BUTTERAUGLI_RESTRICT row_out = out.Row(x);
+		      row_out[y] = sum;
+		    }
+		  }}
+		  break;
+		case 17:
+		  for (size_t y = 0; y < in.ysize(); ++y) {
+		    const float* BUTTERAUGLI_RESTRICT row_in = in.Row(y) + border1 - offset;
+		    for (int x = border1; x < border2; ++x, ++row_in) {
+		      float sum  = (row_in[ 0] + row_in[16]) * scaled_kernel[0];
+		            sum += (row_in[ 1] + row_in[15]) * scaled_kernel[1];
+		            sum += (row_in[ 2] + row_in[14]) * scaled_kernel[2];
+		            sum += (row_in[ 3] + row_in[13]) * scaled_kernel[3];
+		            sum += (row_in[ 4] + row_in[12]) * scaled_kernel[4];
+		            sum += (row_in[ 5] + row_in[11]) * scaled_kernel[5];
+		            sum += (row_in[ 6] + row_in[10]) * scaled_kernel[6];
+		            sum += (row_in[ 7] + row_in[ 9]) * scaled_kernel[7];
+		            sum += (row_in[ 8]             ) * scaled_kernel[8];
+		      float* const BUTTERAUGLI_RESTRICT row_out = out.Row(x);
+		      row_out[y] = sum;
+		    }
+		  }
+		  break;
+		case 33:
+		  for (size_t y = 0; y < in.ysize(); ++y) {
+		    const float* BUTTERAUGLI_RESTRICT row_in = in.Row(y) + border1 - offset;
+		    for (int x = border1; x < border2; ++x, ++row_in) {
+		      float sum  = (row_in[ 0] + row_in[32]) * scaled_kernel[ 0];
+		            sum += (row_in[ 1] + row_in[31]) * scaled_kernel[ 1];
+		            sum += (row_in[ 2] + row_in[30]) * scaled_kernel[ 2];
+		            sum += (row_in[ 3] + row_in[29]) * scaled_kernel[ 3];
+		            sum += (row_in[ 4] + row_in[28]) * scaled_kernel[ 4];
+		            sum += (row_in[ 5] + row_in[27]) * scaled_kernel[ 5];
+		            sum += (row_in[ 6] + row_in[26]) * scaled_kernel[ 6];
+		            sum += (row_in[ 7] + row_in[25]) * scaled_kernel[ 7];
+		            sum += (row_in[ 8] + row_in[24]) * scaled_kernel[ 8];
+		            sum += (row_in[ 9] + row_in[23]) * scaled_kernel[ 9];
+		            sum += (row_in[10] + row_in[22]) * scaled_kernel[10];
+		            sum += (row_in[11] + row_in[21]) * scaled_kernel[11];
+		            sum += (row_in[12] + row_in[20]) * scaled_kernel[12];
+		            sum += (row_in[13] + row_in[19]) * scaled_kernel[13];
+		            sum += (row_in[14] + row_in[18]) * scaled_kernel[14];
+		            sum += (row_in[15] + row_in[17]) * scaled_kernel[15];
+		            sum += (row_in[16]             ) * scaled_kernel[16];
+		      float* const BUTTERAUGLI_RESTRICT row_out = out.Row(x);
+		      row_out[y] = sum;
+		    }
+		  }
+		  break;
+		case 11:
+		  for (size_t y = 0; y < in.ysize(); ++y) {
+		    const float* BUTTERAUGLI_RESTRICT row_in = in.Row(y) + border1 - offset;
+		    for (int x = border1; x < border2; ++x, ++row_in) {
+		      float sum  = (row_in[ 0] + row_in[10]) * scaled_kernel[0];
+		            sum += (row_in[ 1] + row_in[ 9]) * scaled_kernel[1];
+		            sum += (row_in[ 2] + row_in[ 8]) * scaled_kernel[2];
+		            sum += (row_in[ 3] + row_in[ 7]) * scaled_kernel[3];
+		            sum += (row_in[ 4] + row_in[ 6]) * scaled_kernel[4];
+		            sum += (row_in[ 5]             ) * scaled_kernel[5];
+		      float* const BUTTERAUGLI_RESTRICT row_out = out.Row(x);
+		      row_out[y] = sum;
+		    }
+		  }
+		  break;
+		case 41:
+		  for (size_t y = 0; y < in.ysize(); ++y) {
+		    const float* BUTTERAUGLI_RESTRICT row_in = in.Row(y) + border1 - offset;
+		    for (int x = border1; x < border2; ++x, ++row_in) {
+		      float sum  = (row_in[ 0] + row_in[40]) * scaled_kernel[ 0];
+		            sum += (row_in[ 1] + row_in[39]) * scaled_kernel[ 1];
+		            sum += (row_in[ 2] + row_in[38]) * scaled_kernel[ 2];
+		            sum += (row_in[ 3] + row_in[37]) * scaled_kernel[ 3];
+		            sum += (row_in[ 4] + row_in[36]) * scaled_kernel[ 4];
+		            sum += (row_in[ 5] + row_in[35]) * scaled_kernel[ 5];
+		            sum += (row_in[ 6] + row_in[34]) * scaled_kernel[ 6];
+		            sum += (row_in[ 7] + row_in[33]) * scaled_kernel[ 7];
+		            sum += (row_in[ 8] + row_in[32]) * scaled_kernel[ 8];
+		            sum += (row_in[ 9] + row_in[31]) * scaled_kernel[ 9];
+		            sum += (row_in[10] + row_in[30]) * scaled_kernel[10];
+		            sum += (row_in[11] + row_in[29]) * scaled_kernel[11];
+		            sum += (row_in[12] + row_in[28]) * scaled_kernel[12];
+		            sum += (row_in[13] + row_in[27]) * scaled_kernel[13];
+		            sum += (row_in[14] + row_in[26]) * scaled_kernel[14];
+		            sum += (row_in[15] + row_in[25]) * scaled_kernel[15];
+		            sum += (row_in[16] + row_in[24]) * scaled_kernel[16];
+		            sum += (row_in[17] + row_in[23]) * scaled_kernel[17];
+		            sum += (row_in[18] + row_in[22]) * scaled_kernel[18];
+		            sum += (row_in[19] + row_in[21]) * scaled_kernel[19];
+		            sum += (row_in[20]             ) * scaled_kernel[20];
+		      float* const BUTTERAUGLI_RESTRICT row_out = out.Row(x);
+		      row_out[y] = sum;
+		    }
+		  }
+		  break;
+		case 47:
+		  for (size_t y = 0; y < in.ysize(); ++y) {
+		    const float* BUTTERAUGLI_RESTRICT row_in = in.Row(y) + border1 - offset;
+		    for (int x = border1; x < border2; ++x, ++row_in) {
+		      float sum  = (row_in[ 0] + row_in[46]) * scaled_kernel[ 0];
+		            sum += (row_in[ 1] + row_in[45]) * scaled_kernel[ 1];
+		            sum += (row_in[ 2] + row_in[44]) * scaled_kernel[ 2];
+		            sum += (row_in[ 3] + row_in[43]) * scaled_kernel[ 3];
+		            sum += (row_in[ 4] + row_in[42]) * scaled_kernel[ 4];
+		            sum += (row_in[ 5] + row_in[41]) * scaled_kernel[ 5];
+		            sum += (row_in[ 6] + row_in[40]) * scaled_kernel[ 6];
+		            sum += (row_in[ 7] + row_in[39]) * scaled_kernel[ 7];
+		            sum += (row_in[ 8] + row_in[38]) * scaled_kernel[ 8];
+		            sum += (row_in[ 9] + row_in[37]) * scaled_kernel[ 9];
+		            sum += (row_in[10] + row_in[36]) * scaled_kernel[10];
+		            sum += (row_in[11] + row_in[35]) * scaled_kernel[11];
+		            sum += (row_in[12] + row_in[34]) * scaled_kernel[12];
+		            sum += (row_in[13] + row_in[33]) * scaled_kernel[13];
+		            sum += (row_in[14] + row_in[32]) * scaled_kernel[14];
+		            sum += (row_in[15] + row_in[31]) * scaled_kernel[15];
+		            sum += (row_in[16] + row_in[30]) * scaled_kernel[16];
+		            sum += (row_in[17] + row_in[29]) * scaled_kernel[17];
+		            sum += (row_in[18] + row_in[28]) * scaled_kernel[18];
+		            sum += (row_in[19] + row_in[27]) * scaled_kernel[19];
+		            sum += (row_in[20] + row_in[26]) * scaled_kernel[20];
+		            sum += (row_in[21] + row_in[25]) * scaled_kernel[21];
+		            sum += (row_in[22] + row_in[24]) * scaled_kernel[22];
+		            sum += (row_in[23]             ) * scaled_kernel[23];
+		      float* const BUTTERAUGLI_RESTRICT row_out = out.Row(x);
+		      row_out[y] = sum;
+		    }
+		  }
+		  break;
+		default:
+			printf("Warning: Unexpected kernel size! %d\n", len);
+		#else
+		default:
+		#endif
+         for (size_t y = 0; y < in.ysize(); ++y) {
+           const float* const BUTTERAUGLI_RESTRICT row_in = in.Row(y);
+           for (int j, x = border1; x < border2; ++x) {
+             const int d = x - offset;
+             float* const BUTTERAUGLI_RESTRICT row_out = out.Row(x);
+             float sum = 0.0f;
+             for (j = 0; j <= len/2; ++j) {
+               sum += row_in[d + j] * scaled_kernel[j];
+             }
+             for (; j < len; ++j) {
+               sum += row_in[d + j] * scaled_kernel[len-1-j];
+             }
+             row_out[y] = sum;
+           }
+         }
   }
   // right border
   for (int x = border2; x < in.xsize(); ++x) {
     ConvolveBorderColumn(in, kernel, weight_no_border, border_ratio, x,
                          out.Row(x));
   }
+  free(scaled_kernel);
   return out;
 }
 

@@ -358,13 +358,33 @@ void CreateHeatMapImage(const ImageF& distmap, double good_threshold,
   }
 }
 
+char* ReadVersion(char* argv) {
+  FILE* file = fopen("version.txt", "r");
+  char* buffer = new char[100];
+  fread(buffer, 1, 100, file);
+  fclose(file);
+  return buffer;
+}
+
 // main() function, within butteraugli namespace for convenience.
 int Run(int argc, char* argv[]) {
-  if (argc != 3 && argc != 4) {
+  bool valid_syntax = false;
+
+  if (argc == 2) {
+    if (strcmp(argv[1], "--version") == 0) {
+      fprintf(stdout, "%s version %s\n", argv[0], ReadVersion(argv[0]));
+      return 0;
+    }
+  } else if (argc == 3 || argc == 4) {
+    valid_syntax = true;
+  }
+
+  if (!valid_syntax) {
     fprintf(stderr,
-            "Usage: %s {image1.(png|jpg|jpeg)} {image2.(png|jpg|jpeg)} "
-            "[heatmap.ppm]\n",
-            argv[0]);
+            "Usage:\n"
+            "%s {image1.(png|jpg|jpeg)} {image2.(png|jpg|jpeg)} [heatmap.ppm]\n"
+            "%s --version\n",
+            argv[0], argv[0]);
     return 1;
   }
 

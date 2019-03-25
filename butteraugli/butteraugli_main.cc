@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <vector>
+#include <algorithm>
 #include "butteraugli/butteraugli.h"
 
 extern "C" {

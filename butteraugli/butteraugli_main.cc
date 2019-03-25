@@ -358,18 +358,56 @@ void CreateHeatMapImage(const ImageF& distmap, double good_threshold,
   }
 }
 
+static bool ends_with(const std::string& str,
+                     const std::string& suffix) {
+  return str.size() >= suffix.size() && 0 ==
+    str.compare(str.size() - suffix.size(), suffix.size(), suffix);
+}
+
+// check for multi-file mode (if 3rd argument is png|jpg|jpeg
+// input file
+static bool isMultiFileMode(int argc, char* argv[]) {
+  if (argc >= 4 && (ends_with(argv[3], ".png") ||
+    ends_with(argv[3], ".jpg") || ends_with(argv[3], ".jpeg"))) {
+    FILE* const fl = fopen(argv[3], "rb");
+    if (fl != NULL) {
+      fclose(fl);
+      return true;
+    }
+  }
+  return false;
+}
+
+int ProcessFile(bool multiFile, std::vector<Image8>& rgb1,
+    const char* fileName, const char* heatMapFile);
+
 // main() function, within butteraugli namespace for convenience.
 int Run(int argc, char* argv[]) {
-  if (argc != 3 && argc != 4) {
+  bool multiFile = isMultiFileMode(argc, argv);
+  if (argc != 3 && argc != 4 && !multiFile) {
     fprintf(stderr,
             "Usage: %s {image1.(png|jpg|jpeg)} {image2.(png|jpg|jpeg)} "
-            "[heatmap.ppm]\n",
-            argv[0]);
+            "[heatmap.ppm]\n"
+            "or: %s {image1.(png|jpg|jpeg)} {image2.(png|jpg|jpeg)} "
+            "{image3.(png|jpg|jpeg)} ... {imageN.(png|jpg|jpeg)}\n",
+            argv[0], argv[0]);
     return 1;
   }
 
+  int imageN = 2;
   std::vector<Image8> rgb1 = ReadImageOrDie(argv[1]);
-  std::vector<Image8> rgb2 = ReadImageOrDie(argv[2]);
+  do {
+    if (int ret = ProcessFile(multiFile, rgb1, argv[imageN],
+      multiFile || argc!=4 ? NULL : argv[imageN+1]))
+      return ret;
+  } while (multiFile && ++imageN < argc);
+
+  return 0;
+}
+
+int ProcessFile(bool multiFile, std::vector<Image8>& rgb1,
+    const char* fileName, const char* heatMapFile) {
+  std::vector<Image8> rgb2 = ReadImageOrDie(fileName);
 
   if (rgb1.size() == 3 && rgb2.size() == 4) {
     // Adding a missing alpha channel to one of the images.
@@ -424,17 +462,21 @@ int Run(int argc, char* argv[]) {
       diff_map_ptr = &diff_map_on_white;
     }
   }
+  if (multiFile) {
+    printf("%-16lf%s\n", diff_value, fileName);
+    return 0;
+  }
   printf("%lf\n", diff_value);
 
-  if (argc == 4) {
+  if (heatMapFile) {
     const double good_quality = ::butteraugli::ButteraugliFuzzyInverse(1.5);
     const double bad_quality = ::butteraugli::ButteraugliFuzzyInverse(0.5);
     std::vector<uint8_t> rgb;
     CreateHeatMapImage(*diff_map_ptr, good_quality, bad_quality,
                        rgb1[0].xsize(), rgb2[0].ysize(), &rgb);
-    FILE* const fmap = fopen(argv[3], "wb");
+    FILE* const fmap = fopen(heatMapFile, "wb");
     if (fmap == NULL) {
-      fprintf(stderr, "Cannot open %s\n", argv[3]);
+      fprintf(stderr, "Cannot open %s\n", heatMapFile);
       perror("fopen");
       return 1;
     }

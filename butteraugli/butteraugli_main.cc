@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <vector>
+#include <algorithm>
 #include "butteraugli/butteraugli.h"
 
 extern "C" {
@@ -378,7 +379,7 @@ int Run(int argc, char* argv[]) {
     // Adding a missing alpha channel to one of the images.
     rgb2.push_back(Image8(rgb2[0].xsize(), rgb2[0].ysize(), 255));
   } else if (rgb1.size() != rgb2.size()) {
-    fprintf(stderr, "Different number of channels: %lu vs %lu\n", rgb1.size(),
+    fprintf(stderr, "Different number of channels: %zu vs %zu\n", rgb1.size(),
             rgb2.size());
     exit(1);
   }
@@ -387,7 +388,7 @@ int Run(int argc, char* argv[]) {
     if (rgb1[c].xsize() != rgb2[c].xsize() ||
         rgb1[c].ysize() != rgb2[c].ysize()) {
       fprintf(
-          stderr, "The images are not equal in size: (%lu,%lu) vs (%lu,%lu)\n",
+          stderr, "The images are not equal in size: (%zu,%zu) vs (%zu,%zu)\n",
           rgb1[c].xsize(), rgb2[c].xsize(), rgb1[c].ysize(), rgb2[c].ysize());
       return 1;
     }
@@ -439,7 +440,7 @@ int Run(int argc, char* argv[]) {
       return 1;
     }
     bool ok = true;
-    if (fprintf(fmap, "P6\n%lu %lu\n255\n",
+    if (fprintf(fmap, "P6\n%zu %zu\n255\n",
                       rgb1[0].xsize(), rgb1[0].ysize()) < 0){
       perror("fprintf");
       ok = false;

@@ -51,6 +51,21 @@ install corresponding `-dev` packages.
 The code is portable and also compiles on Windows after defining
 `_CRT_SECURE_NO_WARNINGS` in the project settings.
 
+## Building butteraugli - Using vcpkg
+
+You can download and install butteraugli using the [vcpkg](https://github.com/Microsoft/vcpkg) 
+dependency manager:
+
+    git clone https://github.com/Microsoft/vcpkg.git
+    cd vcpkg
+    ./bootstrap-vcpkg.sh
+    ./vcpkg integrate install
+    ./vcpkg install butteraugli
+
+The butteraugli port in vcpkg is kept up to date by Microsoft team members and community 
+contributors. If the version is out of date, please [create an issue or pull request](https://github.com/Microsoft/vcpkg) 
+on the vcpkg repository.
+
 ## Command-line utility {#cmdline-tool}
 
 Butteraugli, apart from the library, comes bundled with a comparison tool. The
